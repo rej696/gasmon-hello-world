@@ -28,6 +28,17 @@ class Pipeline(ABC):
         """
         return PipelineWithSink(self, sink)
 
+    def compose(self, other):
+        return ComposedPipeline(self, other)
+
+class ComposedPipeline(Pipeline):
+    def __init__(self, first, second):
+        self.first = first
+        self.second = second
+
+    def handle(self, events):
+        return self.second.handle(self.first.handle(events))
+
 
 class PipelineWithSink(Pipeline):
     """
@@ -79,3 +90,44 @@ class FixedDurationSource(Pipeline):
             else:
                 logger.info('Finished processing events')
                 return
+
+
+class RemoveDuplicates(Pipeline):
+    def __init__(self):
+        self.counter = 0
+        self.time = 300  # time in seconds
+        self.event_id_cache = set()
+        self.start_time = time()
+
+    def handle(self, events):
+        for event in events:
+            current_time = time()
+            if current_time - self.start_time >= self.time:
+                self.event_id_cache = set()
+                self.start_time = time()
+            if event.event_id in self.event_id_cache:
+                self.counter += 1
+            else:
+                self.event_id_cache.add(event.event_id)
+                yield event
+
+
+class AverageValues(Pipeline):
+    def __init__(self):
+        self.counter = 0
+        self.start_time = time()  # time in seconds
+        self.total_value = 0
+        self.average_values = []
+
+    def handle(self, events):
+        for event in events:
+            self.total_value += event.value
+            self.counter += 1
+            current_time = time()
+            if current_time - self.start_time >= 60:
+                self.average_values.append(self.total_value / self.counter)
+                self.total_value = 0
+                self.counter = 0
+                self.start_time = time()
+            yield event
+

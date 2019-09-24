@@ -26,7 +26,7 @@ def get_locations(s3_bucket, locations_key):
     # Download and parse the file
     logger.info(f'Downloading list of locations from key {locations_key} in bucket {s3_bucket}')
     locations_json = _download_file_from_s3(s3_bucket, locations_key)
-    logger.info(f'Retrieved locations JSON from S3: {locations_json}')
+    logger.info(f'Retrieved locations JSON from S3: ')  # {locations_json}')
     return _parse_locations_json(locations_json)
 
 def _download_file_from_s3(bucket, object_key):
