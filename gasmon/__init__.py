@@ -4,7 +4,7 @@ The GasMon application
 
 import logging
 import sys
-from time import time
+import time
 
 from gasmon.configuration import config
 from gasmon.locations import get_locations
@@ -59,6 +59,12 @@ def main():
         print(f'Events/s: {fixed_duration_source.events_processed / run_time_seconds:.2f}\n')
         print(f'Duplicated events skipped: {remove_duplicates.counter}')
         average_value_index = 0
-        for average_value in average_values.average_values:
-            average_value_index += 1
-            print(f'Average Value in minute {average_value_index}: {average_value}')
+        with open("average_values.csv", "w") as file:
+            file.write("date,hour,minute,average value\n")
+            for average_value in average_values.average_values:
+                local_time_struct = time.localtime(average_values.average_values_timestamp[average_value_index])
+                local_time_string_csv = time.strftime("%d/%m/%Y,%H,%M", local_time_struct)
+                local_time_string_print = time.strftime("%d/%m/%Y %H:%M:%S", local_time_struct)
+                file.write(f"{local_time_string_csv},{average_value}\n")
+                print(f'Average Value at {local_time_string_print}: {average_value}')
+                average_value_index += 1

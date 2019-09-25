@@ -5,7 +5,7 @@ A module consisting of pipeline steps that processed events will pass through.
 from abc import ABC, abstractmethod
 from collections import deque, namedtuple
 import logging
-from time import time
+import time
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
@@ -78,12 +78,12 @@ class FixedDurationSource(Pipeline):
         """
 
         # Calculate the time at which we should stop processing
-        end_time = time() + self.run_time_seconds
+        end_time = time.time() + self.run_time_seconds
         logger.info(f'Processing events for {self.run_time_seconds} seconds')
 
         # Process events for as long as we still have time remaining
         for event in events:
-            if time() < end_time:
+            if time.time() < end_time:
                 logger.debug(f'Procesing event: {event}')
                 self.events_processed += 1
                 yield event
@@ -97,14 +97,14 @@ class RemoveDuplicates(Pipeline):
         self.counter = 0
         self.time = 300  # time in seconds
         self.event_id_cache = set()
-        self.start_time = time()
+        self.start_time = time.time()
 
     def handle(self, events):
         for event in events:
-            current_time = time()
+            current_time = time.time()
             if current_time - self.start_time >= self.time:
                 self.event_id_cache = set()
-                self.start_time = time()
+                self.start_time = time.time()
             if event.event_id in self.event_id_cache:
                 self.counter += 1
             else:
@@ -115,7 +115,8 @@ class RemoveDuplicates(Pipeline):
 class AverageValues(Pipeline):
     def __init__(self):
         self.counter = 0
-        self.start_time = time()  # time in seconds
+        self.start_time = time.time()
+        self.average_values_timestamp = []
         self.total_value = 0
         self.average_values = []
 
@@ -123,11 +124,12 @@ class AverageValues(Pipeline):
         for event in events:
             self.total_value += event.value
             self.counter += 1
-            current_time = time()
+            current_time = time.time()
             if current_time - self.start_time >= 60:
                 self.average_values.append(self.total_value / self.counter)
+                self.average_values_timestamp.append(current_time)
                 self.total_value = 0
                 self.counter = 0
-                self.start_time = time()
+                self.start_time = time.time()
             yield event
 
