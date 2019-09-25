@@ -8,9 +8,9 @@ import time
 
 from gasmon.configuration import config
 from gasmon.locations import get_locations
-from gasmon.pipeline import FixedDurationSource, ComposedPipeline, RemoveDuplicates, AverageValues
+from gasmon.pipeline import FixedDurationSource, ComposedPipeline, RemoveDuplicates, AverageValuesPerMinute
 from gasmon.receiver import QueueSubscription, Receiver
-from gasmon.sink import Printer
+from gasmon.sink import Printer, ValuesPerLocation, SaveAveragePerMinToCSV
 
 root_logger = logging.getLogger()
 log_formatter = logging.Formatter('%(asctime)s [%(threadName)-12.12s] [%(levelname)-5.5s]  %(message)s')
@@ -42,8 +42,8 @@ def main():
     run_time_seconds = int(config['run_time_seconds'])
     fixed_duration_source = FixedDurationSource(run_time_seconds)
     remove_duplicates = RemoveDuplicates()
-    average_values = AverageValues()
-    pipeline = fixed_duration_source.compose(remove_duplicates.compose(average_values))
+    average_values = AverageValuesPerMinute()
+    pipeline = average_values.compose(remove_duplicates.compose(fixed_duration_source))
 
     # Create an SQS queue that will be subscribed to the SNS topic
     sns_topic_arn = config['receiver']['sns_topic_arn']
@@ -52,7 +52,9 @@ def main():
         # Process events as they come in from the queue
         receiver = Receiver(queue_subscription)
         # print all the data
-        pipeline.sink(Printer()).handle(receiver.get_events())
+        pipeline.sink(ValuesPerLocation(locations)).handle(receiver.get_events())
+
+        SaveAveragePerMinToCSV(average_values)
 
         # Show final stats
         print(f'\nProcessed {fixed_duration_source.events_processed} events in {run_time_seconds} seconds')
@@ -60,11 +62,15 @@ def main():
         print(f'Duplicated events skipped: {remove_duplicates.counter}')
         average_value_index = 0
         with open("average_values.csv", "w") as file:
-            file.write("date,hour,minute,average value\n")
+            file.write("date,hour,minute,hours decimal,average value\n")
             for average_value in average_values.average_values:
                 local_time_struct = time.localtime(average_values.average_values_timestamp[average_value_index])
                 local_time_string_csv = time.strftime("%d/%m/%Y,%H,%M", local_time_struct)
+                local_time_string_hour = time.strftime("%H", local_time_struct)
+                local_time_string_min = time.strftime("%M", local_time_struct)
+                local_time_string_hour_decimal = int(local_time_string_min) / 60
+                hours_decimal = f"{int(local_time_string_hour) + local_time_string_hour_decimal}"
                 local_time_string_print = time.strftime("%d/%m/%Y %H:%M:%S", local_time_struct)
-                file.write(f"{local_time_string_csv},{average_value}\n")
+                file.write(f"{local_time_string_csv},{hours_decimal},{average_value}\n")
                 print(f'Average Value at {local_time_string_print}: {average_value}')
                 average_value_index += 1

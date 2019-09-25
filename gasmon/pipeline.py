@@ -112,7 +112,7 @@ class RemoveDuplicates(Pipeline):
                 yield event
 
 
-class AverageValues(Pipeline):
+class AverageValuesPerMinute(Pipeline):
     def __init__(self):
         self.counter = 0
         self.start_time = time.time()
@@ -132,4 +132,19 @@ class AverageValues(Pipeline):
                 self.counter = 0
                 self.start_time = time.time()
             yield event
+
+
+class MatchLocation(Pipeline):
+    def __init__(self, locations):
+        self.locations = locations
+
+    def handle(self, events):
+        for old_event in events:
+            for location in self.locations:
+                if old_event.location_id == location.id:
+                    event = namedtuple("event", "x_location y_location event_id value timestamp")
+                    matched_event = event(
+                        location.x, location.y, old_event.event_id, old_event.value, old_event.timestamp
+                    )
+                    yield matched_event
 
