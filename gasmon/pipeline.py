@@ -226,6 +226,13 @@ class PlotValues:
         self.ax.set_xlabel("X Direction")
         self.ax.set_ylabel("Y Direction")
         self.ax.set_zlabel("Average Value")
+        self.colour_index = 0
+        # colour_switch = [
+        #     "viridis", "plasma", "inferno", "magma", "cividis"
+        # ]
+        self.colour_switch = [
+            "Purples", "BuPu", "Blues", "GnBu", "Greens", "YlGn", "YlOrBr", "Oranges", "OrRd", "Reds", "PuRd"
+        ]
 
     def plot(self, event_location_container, finished):
         self.x = []
@@ -237,16 +244,17 @@ class PlotValues:
         for location in event_location_container.get_reported_locations():
             self.x.append(location.x_location)
             self.y.append(location.y_location)
-            # self.z.append(location.average())
-            self.z.append(location.values[-1])
+            self.z.append(location.average())
+            # self.z.append(location.values[-1])
         if len(self.x) < 3 or len(self.y) < 3:
             return
         self.ax.cla()
-        colour_switch = [
-            "viridis", "plasma", "inferno", "magma", "cividis"
-        ]
-        self.ax.plot_trisurf(self.x, self.y, self.z, cmap=random.choice(colour_switch))
-        print("plot opened")
+        if self.colour_index == len(self.colour_switch):
+            self.colour_index = 0
+        self.ax.plot_trisurf(self.x, self.y, self.z, cmap=self.colour_switch[self.colour_index])
+        self.colour_index += 1
+        # self.ax.plot_trisurf(self.x, self.y, self.z, cmap=random.choice(colour_switch))
+        # print("plot opened")
         if not finished:
             # plt.show(block=False)
             # plt.pause(2)

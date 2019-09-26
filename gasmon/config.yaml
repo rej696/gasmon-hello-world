@@ -5,9 +5,9 @@ aws:
 
 locations:
     s3_bucket: eventprocessing-part1-locationss3bucket-ne8nmobj2sgs
-    # s3_key: locations.json
-    s3_key: locations-part2.json
+    s3_key: locations.json
+    # s3_key: locations-part2.json
 
 receiver:
-    # sns_topic_arn: arn:aws:sns:eu-west-1:552908040772:EventProcessing-Part1-snsTopicSensorDataPart1-1001WZ2UL827H
-    sns_topic_arn: arn:aws:sns:eu-west-1:552908040772:EventProcessing-Part1-snsTopicSensorDataPart2-1XA9AEIC53R7I
+    sns_topic_arn: arn:aws:sns:eu-west-1:552908040772:EventProcessing-Part1-snsTopicSensorDataPart1-1001WZ2UL827H
+    # sns_topic_arn: arn:aws:sns:eu-west-1:552908040772:EventProcessing-Part1-snsTopicSensorDataPart2-1XA9AEIC53R7I
