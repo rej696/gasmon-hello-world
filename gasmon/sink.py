@@ -4,6 +4,9 @@ A module consisting of sinks that the processed events will end up at.
 
 from abc import abstractmethod, ABC
 import time
+import matplotlib.pyplot as plt
+from mpl_toolkits.mplot3d import Axes3D
+import numpy as np
 
 
 class Sink(ABC):
@@ -85,10 +88,28 @@ class ValuesPerLocation(Sink):
         for event in events:
             event_location_container.add_event(event)
             print(event)
+        PlotValues(event_location_container)
         SaveAverageAtLocationToCSV(event_location_container)
         for location in event_location_container.values_at_locations:
             print(f"x:{location.x_location}, y:{location.y_location}, average value:{location.average()}")
 
+
+class PlotValues:
+    def __init__(self, event_location_container):
+        fig = plt.figure()
+        ax = fig.add_subplot(111, projection="3d")
+        x = []
+        y = []
+        z = []
+        for location in event_location_container.values_at_locations:
+            x.append(location.x_location)
+            y.append(location.y_location)
+            z.append(location.average())
+        ax.plot_trisurf(x, y, z, cmap="viridis")
+        ax.set_xlabel("X Direction")
+        ax.set_ylabel("Y Direction")
+        ax.set_zlabel("Average Value")
+        plt.show()
 
 class SaveAverageAtLocationToCSV:
     def __init__(self, event_location_container):
