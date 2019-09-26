@@ -4,11 +4,17 @@ A module consisting of pipeline steps that processed events will pass through.
 
 from abc import ABC, abstractmethod
 from collections import deque, namedtuple
+import matplotlib.pyplot as plt
+from mpl_toolkits.mplot3d import Axes3D
+from matplotlib import cm
+import numpy as np
 import logging
+import random
 import time
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
+
 
 class Pipeline(ABC):
     """
@@ -30,6 +36,7 @@ class Pipeline(ABC):
 
     def compose(self, other):
         return ComposedPipeline(self, other)
+
 
 class ComposedPipeline(Pipeline):
     def __init__(self, first, second):
@@ -148,3 +155,102 @@ class MatchLocation(Pipeline):
                     )
                     yield matched_event
 
+
+class ValuesPerLocation(Pipeline):
+    def __init__(self, locations):
+        self.locations = locations
+        self.plot_values = PlotValues()
+        self.event_location_container = EventLocationContainer(self.locations)
+        self.start_time = 0
+        self.current_time = 0
+
+    def handle(self, events):
+        for event in events:
+            self.event_location_container.add_event(event)
+            self.current_time = time.time()
+            # if self.current_time - self.start_time >= 4:
+            # plt.close(self.plot_values.fig)
+            # self.plot_values.plot(self.event_location_container, False)
+            self.start_time = time.time()
+            yield event
+
+
+class EventLocationContainer:
+    def __init__(self, locations):
+        self.values_at_locations = []
+        for location in locations:
+            self.values_at_locations.append(ValuesAtLocation(location))
+
+    def add_event(self, event):
+        for value_at_location in self.values_at_locations:
+            if event.location_id == value_at_location.id:
+                value_at_location.add_value(event.value)
+
+    def get_reported_locations(self):
+        return filter(
+            lambda l: len(l.values) > 0,
+            self.values_at_locations
+        )
+
+
+class ValuesAtLocation:
+    def __init__(self, location):
+        self.x_location = location.x
+        self.y_location = location.y
+        self.id = location.id
+        self.values = []
+        self.counter = 0
+
+    def add_value(self, value):
+        self.values.append(value)
+
+    def average(self):
+        total = 0
+        for value in self.values:
+            total += value
+            self.counter += 1
+        if self.counter == 0:
+            return total
+        return total / len(self.values)
+
+
+class PlotValues:
+    def __init__(self):
+        plt.ion()
+        self.fig = plt.figure()
+        # self.ax = self.fig.add_subplot(111, projection="3d")
+        self.ax = Axes3D(self.fig)
+        self.x = []
+        self.y = []
+        self.z = []
+        self.ax.set_xlabel("X Direction")
+        self.ax.set_ylabel("Y Direction")
+        self.ax.set_zlabel("Average Value")
+
+    def plot(self, event_location_container, finished):
+        self.x = []
+        self.y = []
+        self.z = []
+        # self.fig = plt.figure()
+        # self.ax = Axes3D(self.fig)
+        # self.ax = self.fig.add_subplot(111, projection="3d")
+        for location in event_location_container.get_reported_locations():
+            self.x.append(location.x_location)
+            self.y.append(location.y_location)
+            # self.z.append(location.average())
+            self.z.append(location.values[-1])
+        if len(self.x) < 3 or len(self.y) < 3:
+            return
+        self.ax.cla()
+        colour_switch = [
+            "viridis", "plasma", "inferno", "magma", "cividis"
+        ]
+        self.ax.plot_trisurf(self.x, self.y, self.z, cmap=random.choice(colour_switch))
+        print("plot opened")
+        if not finished:
+            # plt.show(block=False)
+            # plt.pause(2)
+            self.fig.canvas.draw()
+            self.fig.canvas.flush_events()
+            return
+        plt.show(block=False)

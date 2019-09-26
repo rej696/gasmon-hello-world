@@ -8,9 +8,9 @@ import time
 
 from gasmon.configuration import config
 from gasmon.locations import get_locations
-from gasmon.pipeline import FixedDurationSource, ComposedPipeline, RemoveDuplicates, AverageValuesPerMinute
+from gasmon.pipeline import FixedDurationSource, ComposedPipeline, RemoveDuplicates, AverageValuesPerMinute, ValuesPerLocation
 from gasmon.receiver import QueueSubscription, Receiver
-from gasmon.sink import Printer, ValuesPerLocation, SaveAveragePerMinToCSV
+from gasmon.sink import Printer, SaveAveragePerMinToCSV
 
 root_logger = logging.getLogger()
 log_formatter = logging.Formatter('%(asctime)s [%(threadName)-12.12s] [%(levelname)-5.5s]  %(message)s')
@@ -43,7 +43,8 @@ def main():
     fixed_duration_source = FixedDurationSource(run_time_seconds)
     remove_duplicates = RemoveDuplicates()
     average_values = AverageValuesPerMinute()
-    pipeline = average_values.compose(remove_duplicates.compose(fixed_duration_source))
+    values_per_location = ValuesPerLocation(locations)
+    pipeline = values_per_location.compose(average_values.compose(remove_duplicates.compose(fixed_duration_source)))
 
     # Create an SQS queue that will be subscribed to the SNS topic
     sns_topic_arn = config['receiver']['sns_topic_arn']
@@ -52,8 +53,8 @@ def main():
         # Process events as they come in from the queue
         receiver = Receiver(queue_subscription)
         # print all the data
-        pipeline.sink(ValuesPerLocation(locations)).handle(receiver.get_events())
-
+        pipeline.sink(Printer(locations, values_per_location)).handle(receiver.get_events())
+        values_per_location.plot_values.plot(values_per_location.event_location_container, False)
         SaveAveragePerMinToCSV(average_values)
 
         # Show final stats

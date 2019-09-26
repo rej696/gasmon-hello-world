@@ -4,9 +4,8 @@ A module consisting of sinks that the processed events will end up at.
 
 from abc import abstractmethod, ABC
 import time
+from gasmon.pipeline import EventLocationContainer, PlotValues
 import matplotlib.pyplot as plt
-from mpl_toolkits.mplot3d import Axes3D
-import numpy as np
 
 
 class Sink(ABC):
@@ -23,13 +22,21 @@ class Sink(ABC):
 
 
 class Printer(Sink):
-
-    def __init__(self):
-        pass
+    def __init__(self, locations, values_per_location):
+        self.locations = locations
+        self.values_per_location = values_per_location
 
     def handle(self, events):
+        event_location_container = EventLocationContainer(self.locations)
         for event in events:
+            event_location_container.add_event(event)
+            self.values_per_location.plot_values.plot(event_location_container, False)
             print(event)
+        plot_values = PlotValues()
+        plot_values.plot(event_location_container, True)
+        SaveAverageAtLocationToCSV(event_location_container)
+        for location in event_location_container.values_at_locations:
+            print(f"x:{location.x_location}, y:{location.y_location}, average value:{location.average()}")
 
 
 class SaveAveragePerMinToCSV:
@@ -49,67 +56,6 @@ class SaveAveragePerMinToCSV:
                 print(f'Average Value at {local_time_string_print}: {average_value}')
                 average_value_index += 1
 
-
-class EventLocationContainer:
-    def __init__(self, locations):
-        self.values_at_locations = []
-        for location in locations:
-            self.values_at_locations.append(ValuesAtLocation(location))
-
-    def add_event(self, event):
-        for value_at_location in self.values_at_locations:
-            if event.location_id == value_at_location.id:
-                value_at_location.add_value(event.value)
-
-
-class ValuesAtLocation:
-    def __init__(self, location):
-        self.x_location = location.x
-        self.y_location = location.y
-        self.id = location.id
-        self.values = []
-
-    def add_value(self, value):
-        self.values.append(value)
-
-    def average(self):
-        total = 0
-        for value in self.values:
-            total += value
-        return total / len(self.values)
-
-
-class ValuesPerLocation(Sink):
-    def __init__(self, locations):
-        self.locations = locations
-
-    def handle(self, events):
-        event_location_container = EventLocationContainer(self.locations)
-        for event in events:
-            event_location_container.add_event(event)
-            print(event)
-        PlotValues(event_location_container)
-        SaveAverageAtLocationToCSV(event_location_container)
-        for location in event_location_container.values_at_locations:
-            print(f"x:{location.x_location}, y:{location.y_location}, average value:{location.average()}")
-
-
-class PlotValues:
-    def __init__(self, event_location_container):
-        fig = plt.figure()
-        ax = fig.add_subplot(111, projection="3d")
-        x = []
-        y = []
-        z = []
-        for location in event_location_container.values_at_locations:
-            x.append(location.x_location)
-            y.append(location.y_location)
-            z.append(location.average())
-        ax.plot_trisurf(x, y, z, cmap="viridis")
-        ax.set_xlabel("X Direction")
-        ax.set_ylabel("Y Direction")
-        ax.set_zlabel("Average Value")
-        plt.show()
 
 class SaveAverageAtLocationToCSV:
     def __init__(self, event_location_container):
